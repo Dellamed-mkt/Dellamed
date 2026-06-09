@@ -55,9 +55,22 @@
         <p class="text-[11px] text-blue-200/75 mt-1">Implementação de CRM · Emarsys / NTT</p>
       </div>
     </div>
-    <div class="flex items-center gap-2 text-xs text-blue-200/75">
-      <span class="flex h-2 w-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,.6)]"></span>
-      Atualizado em <span id="hoje-label" class="font-medium text-white"></span>
+    <div class="flex items-center gap-3 flex-wrap">
+      <input type="file" id="upload-input" accept=".xlsx" class="hidden">
+      <button id="upload-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-white/30 text-white/90 hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50">
+        <iconify-icon icon="lucide:upload" class="text-sm"></iconify-icon>
+        Atualizar planilha
+      </button>
+      <button onclick="saveAsHtml()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-[#002F63] hover:bg-blue-50 active:scale-95 transition-all shadow-sm">
+        <iconify-icon icon="lucide:download" class="text-sm"></iconify-icon>
+        Salvar index.html
+      </button>
+      <div class="h-5 w-px bg-white/20"></div>
+      <div class="flex items-center gap-2 text-xs text-blue-200/75">
+        <span class="flex h-2 w-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,.6)]"></span>
+        Atualizado em <span id="hoje-label" class="font-medium text-white"></span>
+      </div>
+      <span id="upload-status" class="text-[11px] font-medium transition-opacity duration-500" style="opacity:0"></span>
     </div>
   </div>
 </header>
@@ -136,7 +149,7 @@
 // ====== DADOS (extraídos do cronograma) ======
 const WEEK0 = new Date(2026,0,26);            // semana base (26/01/2026)
 const N_WEEKS = 37;                            // 26/01 -> 05/10/2026
-const HOJE = new Date(2026,5,1);               // 01/06/2026
+const HOJE = new Date(2026,5,9);               // 09/06/2026
 
 const FASES = {
   1:{nome:'Prepare', label:'Fase 1 · Prepare', cor:'var(--f1)', hex:'#5a93cf'},
@@ -147,34 +160,46 @@ const FASES = {
 };
 
 // segmentos = índices de semana (0=26/01). marco = data única.
-const TASKS = [
+let TASKS = [
+  // FASE 1 — PREPARE (todas concluídas em janeiro)
   {fase:1, nome:'Planejamento', tipo:'bar', segs:[[0,0]], forca:'concluido', info:'Concluído em janeiro/2026.'},
   {fase:1, nome:'Kick-off', tipo:'bar', segs:[[0,0]], forca:'concluido', info:'Concluído em janeiro/2026.'},
   {fase:1, nome:'Homologação da fase', tipo:'bar', segs:[[0,0]], forca:'concluido', info:'Concluído em janeiro/2026.'},
 
+  // FASE 2 — EXPLORE
   {fase:2, nome:'Emarsys (kickoff)', tipo:'bar', segs:[[1,1]], info:'Kickoff Emarsys · semana de 02/02.'},
   {fase:2, nome:'Sales', tipo:'bar', segs:[[2,2]], info:'Workshop Sales · semana de 09/02.'},
   {fase:2, nome:'Service', tipo:'bar', segs:[[3,3]], info:'Workshop Service · semana de 16/02.'},
   {fase:2, nome:'Semana de viagem', tipo:'bar', segs:[[4,4]], info:'Semana de viagem · 23/02.'},
   {fase:2, nome:'Sales (2ª rodada)', tipo:'bar', segs:[[5,5]], info:'Workshop Sales · semana de 02/03.'},
-  {fase:2, nome:'Revisão do BRD', tipo:'bar', segs:[[6,13]], info:'Revisão do BRD · 09/03 a 27/04.'},
+  {fase:2, nome:'Revisão do BRD', tipo:'bar', segs:[[6,13]], info:'09/03 → 27/04/2026.'},
   {fase:2, nome:'Aprovação do BRD (e-mail)', tipo:'marco', data:new Date(2026,4,7), info:'Marco · 07/05/2026.'},
   {fase:2, nome:'Assinatura do BRD', tipo:'marco', data:new Date(2026,4,14), info:'Marco · 14/05/2026.'},
   {fase:2, nome:'Envio dos GAPS – NTT', tipo:'marco', data:new Date(2026,4,18), info:'Marco · 18/05/2026.'},
   {fase:2, nome:'Envio dos GAPS – Dellamed', tipo:'marco', data:new Date(2026,4,20), info:'Marco · 20/05/2026.'},
-  {fase:2, nome:'Envio dos GAPS – NTT (retorno)', tipo:'marco', data:new Date(2026,5,1), info:'Marco · 01/06/2026.'},
+  {fase:2, nome:'Retorno dos GAPS – NTT', tipo:'marco', data:new Date(2026,5,1), info:'Marco · 01/06/2026.'},
+  {fase:2, nome:'Aprovação dos GAPS – Dellamed', tipo:'marco', data:new Date(2026,5,8), info:'Marco · 08/06/2026.'},
 
-  {fase:3, nome:'Desenvolvimento / Configurações', tipo:'bar', segs:[[19,30]], info:'Semana de 08/06 a 24/08.'},
-  {fase:3, nome:'Teste Unitário', tipo:'bar', segs:[[19,30]], info:'Semana de 08/06 a 24/08.'},
-  {fase:3, nome:'Teste Integrado', tipo:'bar', segs:[[31,33]], info:'Semana de 31/08 a 14/09.'},
-  {fase:3, nome:'Homologação da fase', tipo:'bar', segs:[[31,33]], info:'Semana de 31/08 a 14/09.'},
+  // FASE 3 — REALIZE
+  {fase:3, nome:'Desenvolvimento / Configurações', tipo:'bar', segs:[[20,30]], info:'15/06 → 24/08/2026.'},
+  {fase:3, nome:'Sprint Plan Dellamed', tipo:'bar', segs:[[21,21],[25,25]], info:'Sprint 1: semana de 22/06 · Sprint 2: semana de 20/07.'},
+  {fase:3, nome:'Sprint Plan NTT', tipo:'bar', segs:[[22,22],[25,25]], info:'Sprint 1: 29/06 · Sprint 2: semana de 20/07.'},
+  {fase:3, nome:'Sprint Review', tipo:'bar', segs:[[22,22],[26,26]], info:'Review 1: 29/06 · Review 2: semana de 27/07.'},
+  {fase:3, nome:'Testes Dellamed', tipo:'bar', segs:[[23,23],[26,26]], info:'Semanas de 06/07 e 27/07.'},
+  {fase:3, nome:'Correções NTT', tipo:'bar', segs:[[24,24]], info:'Semana de 13/07.'},
+  {fase:3, nome:'Reteste Dellamed', tipo:'bar', segs:[[24,25]], info:'13/07 → 20/07/2026.'},
+  {fase:3, nome:'Teste Unitário', tipo:'bar', segs:[], info:'Sem data definida na planilha.'},
+  {fase:3, nome:'Teste Integrado', tipo:'bar', segs:[[31,33]], info:'31/08 → 14/09/2026.'},
+  {fase:3, nome:'Homologação da fase', tipo:'bar', segs:[[31,33]], info:'31/08 → 14/09/2026.'},
 
+  // FASE 4 — DEPLOY
   {fase:4, nome:'Cutover', tipo:'bar', segs:[[34,34]], info:'Semana de 21/09.'},
   {fase:4, nome:'Homologação da fase', tipo:'bar', segs:[[34,34]], info:'Semana de 21/09.'},
 
-  {fase:5, nome:'Go-live', tipo:'marco', data:new Date(2026,8,28), info:'Marco · semana de 28/09/2026.'},
+  // FASE 5 — RUN
+  {fase:5, nome:'Go-live', tipo:'marco', data:new Date(2026,8,28), info:'Marco · 28/09/2026.'},
   {fase:5, nome:'Suporte pós go-live', tipo:'bar', segs:[[36,36]], info:'Semana de 05/10.'},
-  {fase:5, nome:'Entrega do projeto', tipo:'marco', data:new Date(2026,9,5), info:'Marco · semana de 05/10/2026.'},
+  {fase:5, nome:'Entrega do projeto', tipo:'marco', data:new Date(2026,9,5), info:'Marco · 05/10/2026.'},
 ];
 
 // ====== HELPERS ======
@@ -237,7 +262,7 @@ function renderKPIs(){
   const cards=[
     {t:'Período do projeto', v:'26/01 – 05/10', s:'2026 · ~36 semanas', ic:'lucide:calendar-range', ac:'#3D85C6'},
     {t:'Progresso geral', v:pct+'%', s:concl+' de '+total+' concluídas', ic:'lucide:trending-up', ac:'#2f9e63', bar:pct},
-    {t:'Fase atual', v:'Explore', s:'transição → Realize', ic:'lucide:flag', ac:'#002F63'},
+    {t:'Fase atual', v:'Realize', s:'início em 15/06', ic:'lucide:flag', ac:'#002F63'},
     {t:'Marcos', v:marcosOk+'/'+marcos, s:'concluídos', ic:'lucide:milestone', ac:'#C8860A'},
     {t:'Próximo marco', v:prox?fmtShort(prox.data):'—', s:prox?('em '+diasProx+' dia'+(diasProx>1?'s':'')):'sem marcos', ic:'lucide:bell', ac:'#A6192E'},
     {t:semData?'A agendar':'Go-live previsto', v:semData||fmtShort(new Date(2026,8,28)), s:semData?'atividades sem data':'entrega em 05/10', ic:semData?'lucide:alert-triangle':'lucide:rocket', ac:'#A6192E'},
@@ -250,7 +275,7 @@ function renderKPIs(){
       </div>
       <div class="text-2xl font-semibold tracking-tight" style="color:${c.ac}">${c.v}</div>
       <div class="text-[11px] text-[#6b80a3] mt-0.5">${c.s}</div>
-      ${c.bar!=null?`<div class="mt-2 h-1.5 rounded-full bg-[#e2e8f2] overflow-hidden"><div class="h-full rounded-full" style="width:${c.bar}%;background:${c.ac}"></div></div><div class="mt-2 text-[10px] text-[#8b9cb8] leading-snug italic">O percentual atual reflete nas entregas das fases Prepare e Explore, as sprints da fase Realize ainda serão detalhadas, após detalhamento esse percentual será recalculado.</div>`:''}
+      ${c.bar!=null?`<div class="mt-2 h-1.5 rounded-full bg-[#e2e8f2] overflow-hidden"><div class="h-full rounded-full" style="width:${c.bar}%;background:${c.ac}"></div></div><div class="mt-2 text-[10px] text-[#8b9cb8] leading-snug italic">O percentual atual considera apenas as fases Prepare e Explore. As sprints da fase Realize ainda serão detalhadas e, após esse levantamento, o percentual será recalculado.</div>`:''}
     </div>`).join('');
 }
 
@@ -442,6 +467,7 @@ function setView(v){
 }
 
 // ====== INIT ======
+let HOJE_ATUAL = HOJE; // referência mutável usada após upload
 document.getElementById('hoje-label').textContent=fmt(HOJE);
 var rh=document.getElementById('rodape-hoje'); if(rh) rh.textContent=fmt(HOJE);
 renderKPIs();
@@ -452,6 +478,143 @@ renderGanttAxis();
 document.querySelectorAll('.view-btn').forEach(b=>b.onclick=()=>setView(b.dataset.view));
 document.getElementById('busca').oninput=e=>{fBusca=e.target.value;render();};
 setView('gantt');
+
+// ====== UPLOAD & SAVE ======
+let _excelJsLoaded=false;
+
+function _loadExcelJs(cb){
+  if(_excelJsLoaded){cb();return;}
+  const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+  s.onload=()=>{_excelJsLoaded=true;cb();};
+  s.onerror=()=>_setStatus('Erro ao carregar biblioteca ExcelJS. Verifique a conexão.','err');
+  document.head.appendChild(s);
+}
+
+function _setStatus(msg,type){
+  const el=document.getElementById('upload-status');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=type==='err'?'#fca5a5':type==='ok'?'#86efac':'#fde68a';
+  el.style.opacity=1;
+  if(type==='ok')setTimeout(()=>el.style.opacity=0,4000);
+}
+
+function _isFilled(cell){
+  const f=cell.fill;
+  if(!f||f.type!=='pattern'||f.pattern==='none')return false;
+  const fg=f.fgColor;
+  if(!fg)return false;
+  if(fg.theme!==undefined)return true;
+  if(fg.argb){const a=fg.argb.toUpperCase();return a!=='00000000'&&a!=='FFFFFFFF'&&a!=='FF000000';}
+  return false;
+}
+
+async function _parseXlsx(buffer){
+  const wb=new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+  const ws=wb.worksheets[0];
+  const COL_FASE=2,COL_NOME=3,COL_WS=4,COL_WE=40;
+  const tasks=[];let curFase=1;
+
+  ws.eachRow((row,rn)=>{
+    if(rn<3)return;
+    const faseVal=row.getCell(COL_FASE).value;
+    const nomeVal=row.getCell(COL_NOME).value;
+    if(!nomeVal)return;
+    if(faseVal!=null){
+      if(typeof faseVal==='number')curFase=Math.round(faseVal);
+      else if(typeof faseVal==='string'){const m=faseVal.match(/(\d)/);if(m)curFase=+m[1];}
+    }
+    const nome=String(nomeVal).trim();
+    let marcoDate=null;
+    const idxs=[];
+    for(let c=COL_WS;c<=COL_WE;c++){
+      const cell=row.getCell(c);
+      const val=cell.value;
+      const wk=c-COL_WS;
+      if(val instanceof Date){marcoDate=val;idxs.push(wk);}
+      else if(typeof val==='number'&&val>40000){
+        const d=new Date(1899,11,30);d.setDate(d.getDate()+val);marcoDate=d;idxs.push(wk);
+      }else if(val&&val!==''){idxs.push(wk);}
+      else if(_isFilled(cell)){idxs.push(wk);}
+    }
+    const isMarcoNome=/aprovação|assinatura|envio.*gap|go-live|entrega do projeto/i.test(nome);
+    if(idxs.length===0){
+      tasks.push({fase:curFase,nome,tipo:'bar',segs:[],info:'Sem data definida na planilha.'});
+      return;
+    }
+    if(marcoDate||isMarcoNome){
+      const d=marcoDate||weekDate(idxs[0]);
+      tasks.push({fase:curFase,nome,tipo:'marco',data:d,info:`Marco · ${fmt(d)}.`});
+      return;
+    }
+    // monta segmentos contíguos (tolera gap de 1 semana)
+    const segs=[];let ss=idxs[0],se=idxs[0];
+    for(let i=1;i<idxs.length;i++){
+      if(idxs[i]<=se+2)se=idxs[i];
+      else{segs.push([ss,se]);ss=idxs[i];se=idxs[i];}
+    }
+    segs.push([ss,se]);
+    tasks.push({fase:curFase,nome,tipo:'bar',segs,
+      info:`${fmt(weekDate(segs[0][0]))} → ${fmt(weekDate(segs[segs.length-1][1]))}.`});
+  });
+
+  tasks.filter(t=>t.fase===1).forEach(t=>t.forca='concluido');
+  return tasks;
+}
+
+function _handleFile(file){
+  if(!file||!file.name.endsWith('.xlsx')){_setStatus('Selecione um arquivo .xlsx','err');return;}
+  _setStatus('Carregando ExcelJS…','loading');
+  _loadExcelJs(async()=>{
+    _setStatus('Lendo planilha…','loading');
+    document.getElementById('upload-btn').disabled=true;
+    try{
+      const buf=await file.arrayBuffer();
+      const newTasks=await _parseXlsx(buf);
+      if(!newTasks||newTasks.length===0){_setStatus('Nenhuma tarefa encontrada.','err');return;}
+      TASKS=newTasks;
+      TASKS.forEach(t=>t._st=statusOf(t));
+      HOJE_ATUAL=new Date();
+      document.getElementById('hoje-label').textContent=fmt(HOJE_ATUAL);
+      var rh2=document.getElementById('rodape-hoje');if(rh2)rh2.textContent=fmt(HOJE_ATUAL);
+      renderKPIs();renderFaseProgress();renderFiltros();renderLegenda();renderGanttAxis();render();
+      _setStatus(`✓ ${newTasks.length} atividades atualizadas`,'ok');
+    }catch(e){console.error(e);_setStatus('Erro: '+e.message,'err');}
+    finally{document.getElementById('upload-btn').disabled=false;document.getElementById('upload-input').value='';}
+  });
+}
+
+// Botão upload
+const _inp=document.getElementById('upload-input');
+const _btn=document.getElementById('upload-btn');
+_btn.onclick=()=>_inp.click();
+_inp.onchange=e=>_handleFile(e.target.files[0]);
+
+// ====== SAVE como index.html ======
+function _serDate(d){if(!d)return'null';return`new Date(${d.getFullYear()},${d.getMonth()},${d.getDate()})`;}
+function _serTasks(tasks){
+  return 'let TASKS = [\n'+tasks.map(t=>{
+    let s=`  {fase:${t.fase}, nome:${JSON.stringify(t.nome)}, tipo:'${t.tipo}'`;
+    if(t.forca)s+=`, forca:'${t.forca}'`;
+    if(t.tipo==='bar')s+=`, segs:${JSON.stringify(t.segs)}`;
+    else s+=`, data:${_serDate(t.data)}`;
+    s+=`, info:${JSON.stringify(t.info)}}`;
+    return s;
+  }).join(',\n')+'\n];';
+}
+function saveAsHtml(){
+  const d=HOJE_ATUAL||HOJE;
+  const hojeStr=`const HOJE = new Date(${d.getFullYear()},${d.getMonth()},${d.getDate()});               // ${fmt(d)}`;
+  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  html=html.replace(/(const|let) TASKS = \[[\s\S]*?\n\];/,_serTasks(TASKS));
+  html=html.replace(/const HOJE = new Date\(\d+,\d+,\d+\);[^\n]*/,hojeStr);
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='index.html';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
 </script>
 </body>
 </html>
